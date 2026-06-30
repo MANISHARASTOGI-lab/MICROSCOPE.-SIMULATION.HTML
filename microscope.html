@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Microscope Interface</title>
+    <style>
+        :root {
+            --bg-dark: #0a0f1d;
+            --panel-bg: rgba(20, 27, 45, 0.7);
+            --accent-cyan: #06b6d4;
+            --accent-glow: rgba(6, 182, 212, 0.2);
+            --text-main: #e2e8f0;
+            --text-muted: #64748b;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --nail-color: #dc2626; /* Elegant glossy red paint */
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* App Wrapper */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 950px;
+            background: radial-gradient(circle at top left, #141c2f 0%, #070b14 100%);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        /* Header UI */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-panel {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #64748b;
+            border-radius: 50%;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .status-dot.active {
+            background-color: #06b6d4;
+            box-shadow: 0 0 10px #06b6d4;
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Workspace Grid */
+        .workspace {
+            display: flex;
+            position: relative;
+            height: 480px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+        }
+
+        /* Left side: Deck where hand rests */
+        .dock-zone {
+            width: 300px;
+            height: 100%;
+            border-right: 1px dashed var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(to right, rgba(255,255,255,0.01), transparent);
+        }
+
+        .dock-label {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        /* Right side: Microscope Lab Stage */
+        .microscope-stage {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Target crosshair backdrop */
+        .stage-mat {
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            border: 2px dashed rgba(6, 182, 212, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        /* The Beautiful, Sleek Draggable Hand Container */
+        .hand-element {
+            position: absolute;
+            width: 200px;
+            height: 380px;
+            cursor: grab;
+            z-index: 10;
+            touch-action: none;
+        }
+
+        .hand-element:active {
+            cursor: grabbing;
+        }
+
+        /* Master SVG Design of the Slim Female Hand */
+        .hand-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.4));
+            pointer-events: none;
+        }
+
+        /* Skin Gradients */
+        .skin-base {
+            fill: url(#beautifulSkin);
+        }
+        
+        .nail-polish {
+            fill: var(--nail-color);
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+        }
+
+        /* Highlight overlay to make the painted nails look glossy */
+        .nail-shine {
+            fill: #ffffff;
+            opacity: 0.4;
+        }
+
+        .hand-shadow-details {
+            fill: #1e1b4b;
+            opacity: 0.08;
+        }
+
+        /* THE FIXED MICROSCOPE LENS OVERLAY */
+        .microscope-lens-housing {
+            position: absolute;
+            left: 485px; 
+            top: 110px;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            border: 8px solid #1e293b;
+            box-shadow: 
+                0 25px 50px -12px rgba(0,0,0,0.7),
+                0 0 0 1px rgba(255,255,255,0.1),
+                inset 0 0 30px rgba(0,0,0,0.8);
+            z-index: 20; /* Hand goes UNDERNEATH */
+            pointer-events: none;
+            overflow: hidden;
+            background: transparent;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        /* Lens Active State HUD */
+        .microscope-lens-housing.active {
+            border-color: #06b6d4;
+            box-shadow: 
+                0 25px 50px -12px rgba(0,0,0,0.7),
+                0 0 25px rgba(6, 182, 212, 0.4),
+                inset 0 0 35px rgba(6, 182, 212, 0.2);
+        }
+
+        /* Glass Glare Layer */
+        .lens-glass-glare {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 45%, rgba(6, 182, 212, 0.05) 50%, transparent 70%);
+            z-index: 25;
+        }
+
+        /* Inner viewport */
+        .lens-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        /* REVEALED GERM HAND Layer (Inside lens mask viewport) */
+        .germ-hand-mirror {
+            position: absolute;
+            width: 200px;
+            height: 380px;
+            visibility: hidden;
+        }
+
+        .skin-germ-mode {
+            fill: #0f172a;
+            stroke: #22d3ee;
+            stroke-width: 2;
+        }
+
+        .nail-germ-mode {
+            fill: #1e293b;
+            stroke: #ef4444;
+            stroke-width: 1;
+        }
+
+        /* Microscopic Organisms Styles */
+        .germ-population {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 22;
+        }
+
+        .microscope-lens-housing.active .germ-population {
+            opacity: 1;
+        }
+
+        .organism {
+            position: absolute;
+            border-radius: 50%;
+        }
+
+        /* Germ Variants */
+        .amoeba {
+            width: 24px;
+            height: 20px;
+            background: rgba(244, 63, 94, 0.8);
+            border-radius: 43% 57% 41% 59% / 57% 45% 55% 43%;
+            filter: drop-shadow(0 0 6px #f43f5e);
+            animation: pulse-swim 3s infinite alternate ease-in-out;
+        }
+
+        .bacilli-chain {
+            width: 32px;
+            height: 8px;
+            background: linear-gradient(90deg, #10b981, #047857);
+            border-radius: 6px;
+            filter: drop-shadow(0 0 6px #10b981);
+            animation: wriggle 2.5s infinite alternate ease-in-out;
+        }
+
+        .spirochete {
+            width: 12px;
+            height: 12px;
+            border: 3px solid #eab308;
+            border-radius: 50%;
+            border-top-color: transparent;
+            filter: drop-shadow(0 0 5px #eab308);
+            animation: spin-drift 5s linear infinite;
+        }
+
+        /* Animations */
+        @keyframes pulse-swim {
+            0% { transform: scale(1) translate(0, 0) rotate(0deg); }
+            100% { transform: scale(1.1) translate(8px, -4px) rotate(10deg); }
+        }
+
+        @keyframes wriggle {
+            0% { transform: skewX(-5deg) translate(0, 0); }
+            100% { transform: skewX(10deg) translate(-4px, 6px); }
+        }
+
+        @keyframes spin-drift {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Bottom Controls HUD */
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .guide-text {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .btn-ui {
+            background: #1e293b;
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-ui:hover {
+            background: #273549;
+            border-color: #475569;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <header>
+            <div>
+                <h1>Microscope Lab Simulator</h1>
+            </div>
+            <div class="status-panel">
+                <div class="status-dot" id="statusDot"></div>
+                <div class="status-text" id="statusText">Lens Clear</div>
+            </div>
+        </header>
+
+        <div class="workspace" id="workspace">
+            
+            <div class="dock-zone">
+                <div class="dock-label">Sanitized Zone</div>
+            </div>
+
+            <div class="microscope-stage">
+                <div class="stage-mat"></div>
+            </div>
+
+            <div class="hand-element" id="cleanHand" style="left: 50px; top: 50px;">
+                <svg class="hand-svg" viewBox="0 0 140 240">
+                    <defs>
+                        <linearGradient id="beautifulSkin" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#fff5f5" />
+                            <stop offset="40%" stop-color="#ffdecb" />
+                            <stop offset="100%" stop-color="#e89f77" />
+                        </linearGradient>
+                    </defs>
+                    <g>
+                        <path class="skin-base" d="M 48,240 C 47,210 40,195 42,160 C 43,145 23,135 28,118 C 33,103 44,115 48,124 C 45,90 47,48 54,45 C 61,42 63,65 63,108 C 65,60 70,22 78,20 C 86,18 87,48 87,105 C 90,62 97,35 104,36 C 111,37 110,65 108,110 C 111,78 120,60 126,65 C132,70 126,100 120,128 C115,145 109,170 109,240 Z" />
+                        
+                        <path class="hand-shadow-details" d="M 48,240 C 47,210 40,195 42,160 C 43,145 23,135 28,118 C 30,112 35,115 38,122 C 34,136 48,145 50,165 C 47,195 56,215 56,240 Z" />
+                        
+                        <path class="nail-polish" d="M 23,119 C 22,115 24,111 27,112 C 30,113 30,117 28,121 C 26,124 24,122 23,119 Z" />
+                        <path class="nail-shine" d="M 24,117 Q 26,114 27,115" stroke="white" stroke-width="0.5" fill="none" />
+
+                        <path class="nail-polish" d="M 50,49 C 50,45 52,44 55,45 C 57,46 57,49 55,53 C 53,56 50,53 50,49 Z" />
+                        <path class="nail-shine" d="M 52,46 Q 54,45 55,47" stroke="white" stroke-width="0.5" fill="none" />
+
+                        <path class="nail-polish" d="M 74,23 C 74,19 76,19 79,20 C 81,21 81,24 79,28 C 77,31 74,28 74,23 Z" />
+                        <path class="nail-shine" d="M 76,20 Q 78,19 79,21" stroke="white" stroke-width="0.5" fill="none" />
+
+                        <path class="nail-polish" d="M 100,39 C 100,35 102,35 105,36 C 107,37 106,40 104,44 C 102,47 100,44 100,39 Z" />
+                        <path class="nail-shine" d="M 102,36 Q 104,35 105,37" stroke="white" stroke-width="0.5" fill="none" />
+
+                        <path class="nail-polish" d="M 122,67 C 122,63 125,64 127,66 C 129,68 127,71 125,74 C 123,77 122,72 122,67 Z" />
+                        <path class="nail-shine" d="M 124,65 Q 126,65 126,68" stroke="white" stroke-width="0.5" fill="none" />
+                    </g>
+                </svg>
+            </div>
+
+            <div class="microscope-lens-housing" id="lensHousing">
+                <div class="lens-glass-glare"></div>
+                <div class="lens-viewport">
+                    
+                    <div class="germ-hand-mirror" id="germHand" style="left: -435px; top: -60px;">
+                        <svg style="width:100%; height:100%;" viewBox="0 0 140 240">
+                            <g>
+                                <path class="skin-germ-mode" d="M 48,240 C 47,210 40,195 42,160 C 43,145 23,135 28,118 C 33,103 44,115 48,124 C 45,90 47,48 54,45 C 61,42 63,65 63,108 C 65,60 70,22 78,20 C 86,18 87,48 87,105 C 90,62 97,35 104,36 C 111,37 110,65 108,110 C 111,78 120,60 126,65 C132,70 126,100 120,128 C115,145 109,170 109,240 Z" />
+                                <path class="nail-germ-mode" d="M 23,119 C 22,115 24,111 27,112 C 30,113 30,117 28,121 C 26,124 24,122 23,119 Z" />
+                                <path class="nail-germ-mode" d="M 50,49 C 50,45 52,44 55,45 C 57,46 57,49 55,53 C 53,56 50,53 50,49 Z" />
+                                <path class="nail-germ-mode" d="M 74,23 C 74,19 76,19 79,20 C 81,21 81,24 79,28 C 77,31 74,28 74,23 Z" />
+                                <path class="nail-germ-mode" d="M 100,39 C 100,35 102,35 105,36 C 107,37 106,40 104,44 C 102,47 100,44 100,39 Z" />
+                                <path class="nail-germ-mode" d="M 122,67 C 122,63 125,64 127,66 C 129,68 127,71 125,74 C 123,77 122,72 122,67 Z" />
+                            </g>
+                        </svg>
+                    </div>
+
+                    <div class="germ-population" id="germPopulation"></div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <footer>
+            <div class="guide-text">
+                🔬 <span>Click and drag the hand anywhere to move it underneath the microscope lens.</span>
+            </div>
+            <button class="btn-ui" id="btnReset">Reset Lab</button>
+        </footer>
+
+    </div>
+
+    <script>
+        const cleanHand = document.getElementById('cleanHand');
+        const germHand = document.getElementById('germHand');
+        const lensHousing = document.getElementById('lensHousing');
+        const germPopulation = document.getElementById('germPopulation');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const btnReset = document.getElementById('btnReset');
+
+        // Layout constants matching core workspace design parameters
+        const LENS_LEFT = 485;
+        const LENS_TOP = 110;
+
+        // Populate Microscopic Organisms inside window viewport
+        const microClasses = ['amoeba', 'bacilli-chain', 'spirochete'];
+        function cultivateGermSamples() {
+            germPopulation.innerHTML = '';
+            for (let i = 0; i < 35; i++) {
+                const germ = document.createElement('div');
+                const DNAClass = microClasses[Math.floor(Math.random() * microClasses.length)];
+                germ.classList.add('organism', DNAClass);
+                
+                const radius = Math.random() * 95;
+                const angle = Math.random() * Math.PI * 2;
+                const x = 120 + radius * Math.cos(angle);
+                const y = 120 + radius * Math.sin(angle);
+
+                germ.style.left = `${x}px`;
+                germ.style.top = `${y}px`;
+                germ.style.animationDelay = `${Math.random() * 2}s`;
+                germPopulation.appendChild(germ);
+            }
+        }
+        cultivateGermSamples();
+
+        // High-reliability Delta Drag Engine Setup
+        let isDragging = false;
+        let startX, startY;
+        let elemStartX, elemStartY;
+
+        function startDrag(e) {
+            isDragging = true;
+            
+            const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+            
+            startX = clientX;
+            startY = clientY;
+            
+            elemStartX = parseInt(cleanHand.style.left) || 50;
+            elemStartY = parseInt(cleanHand.style.top) || 50;
+            
+            cleanHand.style.transition = 'none';
+        }
+
+        function moveDrag(e) {
+            if (!isDragging) return;
+            
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+            
+            let newX = elemStartX + dx;
+            let newY = elemStartY + dy;
+            
+            // Boundary enforcement limits
+            newX = Math.max(-40, Math.min(newX, 760));
+            newY = Math.max(-50, Math.min(newY, 260));
+            
+            cleanHand.style.left = `${newX}px`;
+            cleanHand.style.top = `${newY}px`;
+            
+            // Map hidden x-ray layer relative to lens positioning offsets
+            germHand.style.left = `${newX - LENS_LEFT}px`;
+            germHand.style.top = `${newY - LENS_TOP}px`;
+            
+            // Precise mathematical center distance checking
+            const handCenterX = newX + 100;
+            const handCenterY = newY + 190;
+            const lensCenterX = LENS_LEFT + 130;
+            const lensCenterY = LENS_TOP + 130;
+            
+            const range = Math.sqrt(Math.pow(handCenterX - lensCenterX, 2) + Math.pow(handCenterY - lensCenterY, 2));
+            
+            if (range < 200) {
+                lensHousing.classList.add('active');
+                germHand.style.visibility = "visible";
+                statusDot.classList.add('active');
+                statusText.textContent = "SCANNING: GERMS DETECTED";
+                statusText.style.color = "#06b6d4";
+            } else {
+                lensHousing.classList.remove('active');
+                germHand.style.visibility = "hidden";
+                statusDot.classList.remove('active');
+                statusText.textContent = "Lens Clear";
+                statusText.style.color = "var(--text-muted)";
+            }
+        }
+
+        function stopDrag() {
+            isDragging = false;
+        }
+
+        // Attach securely to window elements
+        cleanHand.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', moveDrag);
+        document.addEventListener('mouseup', stopDrag);
+
+        cleanHand.addEventListener('touchstart', startDrag, {passive: true});
+        document.addEventListener('touchmove', moveDrag, {passive: false});
+        document.addEventListener('touchend', stopDrag);
+
+        // Reset Setup Function
+        btnReset.addEventListener('click', () => {
+            cleanHand.style.transition = 'all 0.4s ease';
+            cleanHand.style.left = '50px';
+            cleanHand.style.top = '50px';
+            germHand.style.visibility = "hidden";
+            lensHousing.classList.remove('active');
+            statusDot.classList.remove('active');
+            statusText.textContent = "Lens Clear";
+            statusText.style.color = "var(--text-muted)";
+            cultivateGermSamples();
+        });
+    </script>
+</body>
+</html>
